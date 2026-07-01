@@ -40,15 +40,34 @@ fac = IUniswapV2Factory(_fac);
 
 token0 = IERC20(pair.token0());
 token1 = IERC20(pair.token1());
+vm.prank(fee_h);
+fac.setFeeTo(fee_h);
 
-
-
+console.log(fac.feeTo(), "fee setter sent");
 token0.transfer(user, 200000e6);
 token0.transfer(player, 200000e6);
 token1.transfer(user, 100e18);
 token1.transfer(player, 100e18);
 
 }
+
+
+
+modifier f_lp(){
+
+vm.startPrank(user);
+
+token0.transfer(address(pair), 2000e6);
+token1.transfer(address(pair), 1e18);
+
+pair.mint(user);
+
+vm.stopPrank();
+
+
+_;
+}
+
 
 
 function test_createPair_Revert_Same_Token() external{
@@ -304,6 +323,50 @@ assertGe(liquidity1,liquidity0);
 
 
 
+
+
+function test_mint_Swap_diffent_ratioReturned()external f_lp{
+
+
+
+
+(uint112 rev0, uint112 rev1,) = pair.getReserves();
+
+console.log("revser0 before swap",rev0, "Reserve 1 before swap", rev1);
+
+address t_user = makeAddr("testUser");
+
+
+//swap prank
+vm.startPrank(player);
+
+
+token1.transfer(address(pair), 1 ether);
+
+pair.swap(1330667, 0, t_user, "");
+vm.stopPrank();
+token0.balanceOf(t_user);
+
+
+
+
+
+address f_user = makeAddr("fBalancUser");
+console.log(fac.feeTo(),"Fee recerver address");
+vm.startPrank(user);
+
+pair.transfer(address(pair), pair.balanceOf(user));
+pair.burn(f_user);
+console.log(pair.balanceOf(fee_h),"fee recever balance");
+console.log(pair.balanceOf(f_user),"balance");
+
+vm.stopPrank();
+
+assertGe(token0.balanceOf(f_user),0);
+assertGe(token1.balanceOf(f_user),0);
+
+
+}
 
 
 }

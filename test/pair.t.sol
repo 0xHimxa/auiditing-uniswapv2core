@@ -57,8 +57,8 @@ modifier f_lp(){
 
 vm.startPrank(user);
 
-token0.transfer(address(pair), 2000e6);
-token1.transfer(address(pair), 1e18);
+token0.transfer(address(pair), 8000e6);
+token1.transfer(address(pair), 4e18);
 
 pair.mint(user);
 
@@ -369,6 +369,208 @@ assertGe(token1.balanceOf(f_user),0);
 }
 
 
+
+
+function test_swapFashCall_suceed() external f_lp{
+
+ TFlashSwap flashSwap =  new TFlashSwap(address(pair), address(token1));
+ uint256 amountOut= 1330663997;
+
+
+ vm.startPrank(player);
+ token1.transfer(address(flashSwap),2 ether);
+ pair.swap(amountOut,0, address(flashSwap),abi.encode(100)); 
+
+
+vm.stopPrank();
+
+
+assertEq(token0.balanceOf(address(flashSwap)), amountOut);
+assertEq(token1.balanceOf(address(flashSwap)), 1e18);
+
+
+
+
+
+
 }
 
 
+
+
+
+
+function test_swapFashCall_failed() external f_lp{
+
+ TFlashSwap flashSwap =  new TFlashSwap(address(pair), address(token1));
+ uint256 amountOut= 100e6;
+
+
+ vm.startPrank(player);
+ token1.transfer(address(flashSwap),2 ether);
+ vm.stopPrank();
+
+ vm.expectRevert('UniswapV2: K');
+ pair.swap(amountOut,0, address(flashSwap),abi.encode(100)); 
+
+
+
+
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+function test_Sequence_SwapThenBurn() public f_lp {
+        // 1. Perform a swap
+
+
+
+
+(uint112 rev0, uint112 rev1,) = pair.getReserves();
+uint256 _klas = pair.kLast();
+ uint256 amountOut= 1330663997;
+address t_user = makeAddr("testUser");
+
+
+//swap prank
+vm.startPrank(player);
+
+
+token1.transfer(address(pair), 1 ether);
+
+pair.swap(1330667, 0, t_user, "");
+vm.stopPrank();
+token0.balanceOf(t_user);
+(uint112 reev0, uint112 reev1,) = pair.getReserves();
+assertGe((reev0 * reev1), _klas);
+
+
+
+address f_user = makeAddr("fBalancUser");
+console.log(fac.feeTo(),"Fee recerver address");
+vm.startPrank(user);
+
+pair.transfer(address(pair), pair.balanceOf(user));
+pair.burn(f_user);
+console.log(pair.balanceOf(fee_h),"fee recever balance");
+console.log(pair.balanceOf(f_user),"balance");
+(uint112 reeev0, uint112 reeev1,) = pair.getReserves();
+assert((reeev0 * reeev1) < _klas);
+vm.stopPrank();
+
+
+
+
+
+
+
+
+    }
+
+    function test_Sequence_FlashSwapThenMint() public {
+        // 1. Initiate a flash swap (borrow tokens, execute callback)
+        // 2. Inside callback or right after, Mint new liquidity
+        // 3. Repay flash swap
+        // 4. Assert K
+    }
+
+    function test_Sequence_MultipleSwaps() public {
+
+
+(uint112 rev0, uint112 rev1,) = pair.getReserves();
+uint256 _klas = pair.kLast();
+ uint256 amountOut= 1330663997;
+address t_user = makeAddr("testUser");
+
+
+//swap prank
+vm.startPrank(player);
+
+
+token1.transfer(address(pair), 1 ether);
+
+pair.swap(1330667, 0, t_user, "");
+
+token1.transfer(address(pair), 1 ether);
+
+pair.swap(1330667, 0, t_user, "");
+
+vm.stopPrank();
+token0.balanceOf(t_user);
+(uint112 reev0, uint112 reev1,) = pair.getReserves();
+assert((reev0 * reev1) >= _klas);
+
+
+   
+
+
+
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+contract TFlashSwap{
+IUniswapV2Pair pair;
+IUniswapV2ERC20 token1;
+
+constructor(address _pair,address _token1){
+
+pair = IUniswapV2Pair(_pair);
+token1 = IUniswapV2ERC20(_token1);
+
+}
+
+
+ function uniswapV2Call(address sender, uint amount0, uint amount1, bytes calldata data) external{
+
+if(amount0 > 1000e6){
+token1.transfer(address(pair), 1e18);
+}else{
+  token1.transfer(address(pair), 1);
+}
+    
+
+
+ }
+
+}

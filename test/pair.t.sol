@@ -70,6 +70,24 @@ _;
 
 
 
+function getAmountOut(
+    uint256 amountIn, 
+    uint256 reserveIn, 
+    uint256 reserveOut
+) internal pure returns (uint256 amountOut) {
+    require(amountIn > 0, 'INSUFFICIENT_INPUT_AMOUNT');
+    require(reserveIn > 0 && reserveOut > 0, 'INSUFFICIENT_LIQUIDITY');
+    
+    uint256 amountInWithFee = amountIn * 997;
+    uint256 numerator = amountInWithFee * reserveOut;
+    uint256 denominator = (reserveIn * 1000) + amountInWithFee;
+    
+    amountOut = numerator / denominator;
+}
+
+
+
+
 function test_createPair_Revert_Same_Token() external{
 
 
@@ -477,14 +495,14 @@ vm.stopPrank();
 
     }
 
-    function test_Sequence_FlashSwapThenMint() public {
+    function test_Sequence_FlashSwapThenMint() public  {
         // 1. Initiate a flash swap (borrow tokens, execute callback)
         // 2. Inside callback or right after, Mint new liquidity
         // 3. Repay flash swap
         // 4. Assert K
     }
 
-    function test_Sequence_MultipleSwaps() public {
+    function test_Sequence_MultipleSwaps() public f_lp {
 
 
 (uint112 rev0, uint112 rev1,) = pair.getReserves();
@@ -497,14 +515,17 @@ address t_user = makeAddr("testUser");
 vm.startPrank(player);
 
 
+
+
+//token1.transfer(address(pair), 1 ether);
+
+//pair.swap(1330667, 0, t_user, "");
+
 token1.transfer(address(pair), 1 ether);
+ uint256 amountG = getAmountOut(1 ether, rev1, rev0);
 
-pair.swap(1330667, 0, t_user, "");
 
-token1.transfer(address(pair), 1 ether);
-
-pair.swap(1330667, 0, t_user, "");
-
+pair.swap(amountG, 0, t_user, "");
 vm.stopPrank();
 token0.balanceOf(t_user);
 (uint112 reev0, uint112 reev1,) = pair.getReserves();

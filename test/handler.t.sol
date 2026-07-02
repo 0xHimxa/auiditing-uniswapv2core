@@ -17,7 +17,7 @@ contract CoreHandler is Test {
     IUniswapV2Pair public pair;
     IERC20 public token0;
     IERC20 public token1;
-    
+    uint256 public totalFeeLp;
     address[] public users;
     address public currentActor;
     
@@ -52,16 +52,46 @@ contract CoreHandler is Test {
          uint256 initialLiquidity = Math.sqrt(amount0 * amount1);
         if(initialLiquidity <= 1000)return;
         _ensureBalance(player, amount0, amount1);
-        
+
+
+  uint256 totalSupply = pair.totalSupply();
+
+
+
 if(rev0 != 0  && rev1 != 0){
     
-      uint256 min0Amount =  (amount0 * pair.totalSupply() / rev0) ;
-        uint256 min1Amount =  (amount1 * pair.totalSupply() / rev1) ; 
+      uint256 min0Amount =  (amount0 * totalSupply / rev0) ;
+        uint256 min1Amount =  (amount1 * totalSupply / rev1) ; 
         uint256 minAmount =  min0Amount < min1Amount ? min0Amount : min1Amount; 
 
         if(minAmount == 0)return;
 
 }
+
+
+
+
+        if (pair.kLast() != 0) {
+        (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
+        uint256 rootK = Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 rootKLast = Math.sqrt(pair.kLast());
+        
+        if (rootK > rootKLast) {
+            uint256 numerator = totalSupply * (rootK - rootKLast);
+            uint256 denominator = (rootK * 5) + rootKLast;
+            uint256 liquidity = numerator / denominator;
+            // Dilute the total supply locally before making checks
+            if (liquidity > 0) {
+                totalSupply += liquidity;
+            totalFeeLp += liquidity;
+
+            }
+        }
+    }
+
+
+        
+
 
         vm.startPrank(player);
         token0.transfer(address(pair), amount0);
@@ -95,12 +125,43 @@ function addUnBalancedLiquidity(uint112 _amountAdding, uint256 amount1side, uint
          pair.mint(player);
             return;
         }
-        
-        uint256 min0Amount =  (amount0 * pair.totalSupply() / rev0) ;
-        uint256 min1Amount =  (amount1 * pair.totalSupply() / rev1) ; 
+
+        uint256 totalSupply = pair.totalSupply();
+
+           uint256 min0Amount =  (amount0 * totalSupply / rev0) ;
+        uint256 min1Amount =  (amount1 * totalSupply / rev1) ; 
         uint256 minAmount =  min0Amount < min1Amount ? min0Amount : min1Amount; 
 
         if(minAmount == 0)return;
+
+        if (pair.kLast() != 0) {
+        (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
+        uint256 rootK = Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 rootKLast = Math.sqrt(pair.kLast());
+        
+        if (rootK > rootKLast) {
+            uint256 numerator = totalSupply * (rootK - rootKLast);
+            uint256 denominator = (rootK * 5) + rootKLast;
+            uint256 liquidity = numerator / denominator;
+            // Dilute the total supply locally before making checks
+            if (liquidity > 0) {
+                totalSupply += liquidity;
+            totalFeeLp += liquidity;
+
+            }
+        }
+    }
+
+        
+     
+
+
+
+
+
+
+
+
         
         _ensureBalance(player, amount0, amount1);
         
@@ -146,30 +207,60 @@ pair.sync();
 
 
     
-    function burn(uint256 _amountBurn, uint8 _playerIndex) external {
-        address player = users[_playerIndex % users.length];
-        uint256 balance = pair.balanceOf(player);
-        
-        if (balance == 0) return;
+  function burn(uint256 _amountBurn, uint8 _playerIndex) external {
+    address player = users[_playerIndex % users.length];
+    uint256 balance = pair.balanceOf(player);
+    
+    if (balance == 0) return;
 
-        
-        
-        uint256 amount = bound(_amountBurn, 1 wei, balance);
+    uint256 amount = bound(_amountBurn, 1 wei, balance);
 
-         // CHANGE: Pre-calculate Uniswap V2 burn math to avoid 0 payouts
-    (uint256 rev0, uint256 rev1,) = pair.getReserves();
+    
+    uint256 bal0 = token0.balanceOf(address(pair));
+    uint256 bal1 = token1.balanceOf(address(pair));
     uint256 totalSupply = pair.totalSupply();
     
-    uint256 amount0 = (amount * rev0) / totalSupply;
-    uint256 amount1 = (amount * rev1) / totalSupply;
+
+    // Calculate the pro-rata distribution accurately
+    uint256 amount0 = (amount * bal0) / totalSupply;
+    uint256 amount1 = (amount * bal1) / totalSupply;
     
-    if (amount0 == 0 || amount1 == 0) return; // Skip if it will cause a revert
-    
-        vm.startPrank(player);
-        pair.transfer(address(pair), amount);
-        pair.burn(player);
-        vm.stopPrank();
+    // Skip if it will trigger the 'UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED' revert
+    if (amount0 == 0 || amount1 == 0) return; 
+
+
+
+if (pair.kLast() != 0) {
+        (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
+        uint256 rootK = Math.sqrt(uint256(reserve0) * uint256(reserve1));
+        uint256 rootKLast = Math.sqrt(pair.kLast());
+        
+        if (rootK > rootKLast) {
+            uint256 numerator = totalSupply * (rootK - rootKLast);
+            uint256 denominator = (rootK * 5) + rootKLast;
+            uint256 liquidity = numerator / denominator;
+            // Dilute the total supply locally before making checks
+            if (liquidity > 0) {
+                totalSupply += liquidity;
+            totalFeeLp += liquidity;
+
+            }
+        }
     }
+
+
+
+
+
+
+
+
+    
+    vm.startPrank(player);
+    pair.transfer(address(pair), amount);
+    pair.burn(player);
+    vm.stopPrank();
+}
     
     function swap(uint256 amountOut, bool side, uint8 _playerIndex) external {
         address player = users[_playerIndex % users.length];
@@ -255,4 +346,11 @@ pair.sync();
     return reserveOut * amountInWithFee
         / (reserveIn * 1000 + amountInWithFee);
 }
+
+
+
+
+
+
+
 }

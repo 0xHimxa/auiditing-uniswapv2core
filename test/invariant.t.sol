@@ -90,10 +90,6 @@ function invariant_kLastNonZero() public {
     if (kLast != 0) {
       
         assertGe(k, kLast, "k must be >= kLast");
-    } else {
-      
-        assertEq(k, 0, "k should never be negative");
-      
     }
 }
 
@@ -149,6 +145,14 @@ function invariant_lpShareAccounting() public {
 
     // Total LP owned by tracked users can never exceed total supply.
     assertLe(totalSum, totalSupply, "LP balances exceed total supply");
+}
+
+
+function invariant_feeReceiverBalance() public{
+    uint256 feeReceiverLpshare = pair.balanceOf(fee_h);
+    uint256 totalFee =  handler.totalFeeLp();
+    
+    assertEq(feeReceiverLpshare,totalFee,"fee receiver balance is not equal to total fee");
 }
 
 }

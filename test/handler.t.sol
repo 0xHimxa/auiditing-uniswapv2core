@@ -53,6 +53,16 @@ contract CoreHandler is Test {
         if(initialLiquidity <= 1000)return;
         _ensureBalance(player, amount0, amount1);
         
+if(rev0 != 0  && rev1 != 0){
+    
+      uint256 min0Amount =  (amount0 * pair.totalSupply() / rev0) ;
+        uint256 min1Amount =  (amount1 * pair.totalSupply() / rev1) ; 
+        uint256 minAmount =  min0Amount < min1Amount ? min0Amount : min1Amount; 
+
+        if(minAmount == 0)return;
+
+}
+
         vm.startPrank(player);
         token0.transfer(address(pair), amount0);
         token1.transfer(address(pair), amount1);

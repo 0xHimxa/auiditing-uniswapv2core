@@ -66,7 +66,7 @@ fac.setFeeTo(fee_h);
 
 
 
-function invariant_balanceNeverIncreased() external{
+function invariant_balancesMatchOrExceedReserves() external{
 
 (uint256 rev0,uint256 rev1,) = pair.getReserves();
 assertGe(token0.balanceOf(address(pair)),rev0,"Token A balance increased");
@@ -74,6 +74,81 @@ assertGe(token1.balanceOf(address(pair)),rev1,"Token B balance increased");
 
 }
 
+function invariant_totalSupplyMinimum() public {
+    uint256 totalSupply = pair.totalSupply();
+    if (totalSupply > 0) {
+        assertGe(totalSupply, 1000, "Total supply cannot be non-zero and less than MINIMUM_LIQUIDITY");
+    }
+}
 
+function invariant_kLastNonZero() public {
+    uint256 kLast = pair.kLast();
+    (uint256 _reserve0,uint256 _reserve1,) = pair.getReserves();
+
+    uint256 k = _reserve0 * _reserve1;
+
+    if (kLast != 0) {
+      
+        assertGe(k, kLast, "k must be >= kLast");
+    } else {
+      
+        assertEq(k, 0, "k should never be negative");
+      
+    }
+}
+
+
+
+function invariant_lpShareSolvency() public {
+    uint256 totalSupply = pair.totalSupply();
+    if (totalSupply == 0) return;
+
+    (uint256 reserve0, uint256 reserve1,) = pair.getReserves();
+
+    address testUser = handler.users(0);
+    uint256 userLP = pair.balanceOf(testUser);
+
+    if (userLP == 0) return;
+
+    uint256 claim0 = (userLP * reserve0) / totalSupply;
+    uint256 claim1 = (userLP * reserve1) / totalSupply;
+
+    // A user's proportional claim can never exceed the pool reserves.
+    assertLe(claim0, reserve0, "LP claim exceeds reserve0");
+    assertLe(claim1, reserve1, "LP claim exceeds reserve1");
+
+}
+
+
+
+    function invariant_kLastGrowth() public {
+    uint256 kLast = pair.kLast();
+    if (kLast > 0) {
+        (uint256 reserve0, uint256 reserve1,) = pair.getReserves();
+        uint256 currentK = reserve0 * reserve1;
+        
+        // The current K must never drop below the last saved K 
+        assertGe(currentK, kLast, "Current K dropped below kLast (Value leakage or math overflow)");
+    }
+}
+
+
+
+
+function invariant_lpShareAccounting() public {
+    uint256 totalSupply = pair.totalSupply();
+    if (totalSupply == 0) return;
+
+    uint256 sum;
+
+    for (uint256 i = 0; i < 3; i++) {
+        sum += pair.balanceOf(handler.users(i));
+    }
+
+    uint256 totalSum = sum + pair.balanceOf(player) + 1000;
+
+    // Total LP owned by tracked users can never exceed total supply.
+    assertLe(totalSum, totalSupply, "LP balances exceed total supply");
+}
 
 }

@@ -9,6 +9,7 @@ import {Math} from "./Math.sol";
 import {USDC_ERC20} from "src/test/1ERC20.sol";
 import{ CoreHandler} from "./handler.t.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
+import {FeeOnTransferToken} from "test/feeOn.sol";
 contract UniswapPairTest is StdInvariant, Test{
 
 //do for token that have 6 decimal
@@ -32,6 +33,7 @@ CoreHandler handler;
 function setUp() external{
   
 tokenA = deployCode("src/test/ERC20.sol:ERC20",abi.encodePacked(TOKEN_A_BAL));
+//tokenA = address(new FeeOnTransferToken(TOKEN_A_BAL,address(this),500));
  tokenB = address(new USDC_ERC20(address(this),TOKEN_B_BAL));
 
 

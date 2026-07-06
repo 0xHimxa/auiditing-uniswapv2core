@@ -538,6 +538,120 @@ assert((reev0 * reev1) >= _klas);
 
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ function test_Twap() public {
+   
+
+vm.startPrank(user);
+
+token0.transfer(address(pair), 20_000e6);
+token1.transfer(address(pair), 10e18);
+
+pair.mint(user);
+
+vm.stopPrank();
+
+(uint112 rev0_, uint112 rev1_,) = pair.getReserves();
+
+
+//swap prank
+vm.startPrank(player);
+
+
+
+
+//token1.transfer(address(pair), 1 ether);
+
+//pair.swap(1330667, 0, t_user, "");
+
+token1.transfer(address(pair), 1 ether);
+ uint256 amountGG = getAmountOut(1 ether, rev1_, rev0_);
+
+
+pair.swap(amountGG, 0, user, "");
+vm.stopPrank();
+
+
+
+
+
+
+
+
+
+
+
+
+
+(uint112 rev0, uint112 rev1,) = pair.getReserves();
+console.log("revser0 before swap",rev0, "Reserve 1 before swap", rev1);
+
+uint256 priceMove0;
+uint256 priceMove1;
+address t_player = makeAddr("t_player");
+
+vm.startPrank(player);
+vm.warp(block.timestamp + 60);
+vm.roll(100);
+
+
+
+
+
+token1.transfer(address(pair), 9 ether);
+ uint256 amountG = getAmountOut(9 ether, rev1, rev0);
+
+
+pair.swap(amountG, 0, t_player, "");
+priceMove0  = pair.price0CumulativeLast();
+priceMove1 = pair.price1CumulativeLast();
+(uint112 rev00, uint112 rev11,) = pair.getReserves();
+console.log("revser0 after swap",rev00, "Reserve 1 after swap", rev11);
+
+
+ uint256 amountJ = getAmountOut(token0.balanceOf(t_player), rev00, rev11);
+ console.log("amountJ", amountJ);
+token0.transfer(address(pair), token0.balanceOf(t_player));
+pair.swap(0, amountJ, t_player, "");
+(uint112 rev000, uint112 rev111,) = pair.getReserves();
+console.log("revser0 after swap",rev000, "Reserve 1 after swap", rev111);
+
+
+ 
+
+ vm.stopPrank();
+
+uint256 currentPriceAccumulator0 = pair.price0CumulativeLast();
+uint256 currentPriceAccumulator1 = pair.price1CumulativeLast();
+
+console.log("currentPriceAccumulator0", currentPriceAccumulator0);
+console.log("currentPriceAccumulator1", currentPriceAccumulator1);
+
+
+
+assertEq(priceMove0, currentPriceAccumulator0);
+assertEq(priceMove1, currentPriceAccumulator1);
+ 
+
+
+
+ 
+ }  
 }
 
 
